@@ -1,0 +1,39 @@
+# https://taskfile.dev
+version: "3"
+
+silent: true
+
+includes:
+  md: ./taskfiles/Taskfile.md.yml
+  hooks:
+    taskfile: ./taskfiles/Taskfile.hooks.yml
+    flatten: true
+
+vars:
+  # Latest version: https://hub.docker.com/r/koalaman/shellcheck/tags
+  SHELLCHECK_VERSION: v0.11.0
+  SHELL_FILES: hooks/_lib.sh hooks/_passthrough hooks/commit-msg tests/run.sh
+
+tasks:
+
+  test:
+    desc: Run the hook tests in throwaway repositories
+    cmds:
+      - sh tests/run.sh
+
+  lint:
+    desc: Run shellcheck over the hooks and tests
+    cmds:
+      - docker run
+        --rm
+        --volume "{{.ROOT_DIR}}:/mnt"
+        --workdir /mnt
+        koalaman/shellcheck:{{.SHELLCHECK_VERSION}}
+        {{.SHELL_FILES}}
+
+  checkall:
+    desc: Run every check — shellcheck, the hook tests, and markdownlint
+    cmds:
+      - task: lint
+      - task: test
+      - task: md:check

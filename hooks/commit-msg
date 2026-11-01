@@ -1,0 +1,39 @@
+#!/bin/sh
+# Rejects a commit message that credits an AI assistant (Claude / Anthropic),
+# then runs the repository's own commit-msg hook.
+
+# shellcheck source=_lib.sh
+. "$(dirname "$0")/_lib.sh"
+
+msg_file=$1
+
+comment_char=$(git config --get core.commentChar 2>/dev/null)
+case $comment_char in
+    "" | auto) comment_char="#" ;;
+esac
+
+# Only the message itself: stop at the scissors line `git commit -v` adds above
+# the diff, and skip comment lines, which git strips.
+offending=$(awk -v c="$comment_char" '
+    index($0, c " ------------------------ >8 ------------------------") == 1 { exit }
+    index($0, c) == 1 { next }
+    {
+        line = tolower($0)
+        if (line ~ /^[[:space:]]*co-authored-by:.*(claude|anthropic)/ ||
+            line ~ /noreply@anthropic\.com/ ||
+            line ~ /generated (with|by) .*claude/) {
+            print "  " NR ": " $0
+        }
+    }
+' "$msg_file")
+
+if [ -n "$offending" ]; then
+    {
+        echo "commit-msg: the message credits an AI assistant; remove these lines:"
+        echo "$offending"
+        echo "(global hook: $0)"
+    } >&2
+    exit 1
+fi
+
+run_local_hook commit-msg "$@"

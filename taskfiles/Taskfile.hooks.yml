@@ -1,0 +1,31 @@
+# https://taskfile.dev
+version: "3"
+
+vars:
+  HOOKS_DIR:
+    sh: cd "{{.ROOT_DIR}}/hooks" && pwd -P
+  CURRENT_HOOKS_PATH:
+    sh: git config --global --get core.hooksPath || true
+
+tasks:
+
+  install:
+    desc: Point the global core.hooksPath at this checkout's hooks/
+    preconditions:
+      - sh: '[ -z "{{.CURRENT_HOOKS_PATH}}" ] || [ "{{.CURRENT_HOOKS_PATH}}" = "{{.HOOKS_DIR}}" ]'
+        msg: |-
+          core.hooksPath is already set globally to {{.CURRENT_HOOKS_PATH}}; not overwriting it.
+          Unset it first: git config --global --unset core.hooksPath
+    cmds:
+      - chmod +x "{{.HOOKS_DIR}}/_passthrough" "{{.HOOKS_DIR}}/commit-msg"
+      - git config --global core.hooksPath "{{.HOOKS_DIR}}"
+      - echo "core.hooksPath = {{.HOOKS_DIR}}"
+
+  uninstall:
+    desc: Unset the global core.hooksPath, if it points at this checkout
+    preconditions:
+      - sh: '[ "{{.CURRENT_HOOKS_PATH}}" = "{{.HOOKS_DIR}}" ]'
+        msg: "core.hooksPath does not point here (it is '{{.CURRENT_HOOKS_PATH}}'); leaving it alone."
+    cmds:
+      - git config --global --unset core.hooksPath
+      - echo "core.hooksPath unset"

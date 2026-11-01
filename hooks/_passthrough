@@ -1,0 +1,9 @@
+#!/bin/sh
+# Every hook name in this directory links here. A global core.hooksPath makes
+# git skip the repository's own .git/hooks, so this runs the repository's hook
+# of the same name, if it has one, with the same arguments and stdin.
+
+# shellcheck source=_lib.sh
+. "$(dirname "$0")/_lib.sh"
+
+run_local_hook "$(basename "$0")" "$@"

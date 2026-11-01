@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Run shellcheck
+        run: >-
+          docker run --rm --volume "$PWD:/mnt" --workdir /mnt
+          koalaman/shellcheck:v0.11.0
+          hooks/_lib.sh hooks/_passthrough hooks/commit-msg tests/run.sh
+
+  tests:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The hooks run on developer machines, so BSD userland (macOS) matters as much as GNU.
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Run the hook tests
+        run: sh tests/run.sh
